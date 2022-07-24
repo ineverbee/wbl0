@@ -1,0 +1,55 @@
+version: '3.4'
+
+services:
+  nats:
+    image: nats-streaming:alpine
+    network_mode: bridge
+    container_name: nats
+    ports:
+      - 4222:4222
+      - 8222:8222
+  postgres:
+    image: postgres:latest
+    network_mode: bridge
+    container_name: postgres
+    expose:
+    - 5432
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: "pguser"
+      POSTGRES_PASSWORD: "pgpwd4"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+  wbl0:
+    image: wbl0
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    network_mode: bridge
+    container_name: wbl0
+    environment:
+      DB_USERNAME: "pguser"
+      DB_PASSWORD: "pgpwd4"
+      DB_HOST: "postgres"
+      DB_PORT: "5432"
+      DB_NAME: "wb_db"
+      NATS_CLUSTER_ID: "test-cluster"
+      NATS_CLIENT_ID: "test-client"
+      NATS_CHANNEL: "foo"
+      NATS_DURABLE: "durable"
+      NATS_URL: "http://nats:4222"
+    expose:
+      - 8080
+    ports:
+      - 8080:8080
+    restart: unless-stopped
+    depends_on:
+      - nats
+      - postgres
+    links:
+      - nats
+      - postgres
+volumes:
+  postgres-data:
